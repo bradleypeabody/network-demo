@@ -1,0 +1,66 @@
+<html>
+    <body>
+        <div>
+
+            <button @click="c.handleClick(event)">Test</button>
+
+            <div>Startup Result: <span vg-html="c.StartupData"></span></div>
+            <div>SomeData Result: <span vg-html="c.SomeData"></span></div>
+            <div>SomeMoreData Result: <span vg-html="c.SomeMoreData"></span></div>
+
+        </div>
+    </body>
+</html>
+
+<script type="application/x-go">
+
+import "log"
+import "net/http"
+import "io/ioutil"
+
+type Root struct {
+    StartupData string `vugu:"data"`
+    SomeData string `vugu:"data"`
+    SomeMoreData string `vugu:"data"`
+}
+
+func (c *Root) handleClick(event *vugu.DOMEvent) {
+
+    log.Printf("DEMO: calling /api/somedata")
+
+    go func() {
+
+        // make a request
+        resp, err := http.Get("/api/somedata")
+        if err != nil { panic(err) }
+        defer resp.Body.Close()
+        body, err := ioutil.ReadAll(resp.Body)
+        if err != nil { panic(err) }
+
+        // update the response data on our Root component
+        env := event.EventEnv()
+        env.Lock()
+        defer env.UnlockRender()
+        c.SomeData = string(body) 
+
+
+        // kick off a new request, same pattern
+        go func() {
+
+            resp, err := http.Get("/api/somemoredata")
+            if err != nil { panic(err) }
+            defer resp.Body.Close()
+            body, err := ioutil.ReadAll(resp.Body)
+            if err != nil { panic(err) }
+    
+            env := event.EventEnv()
+            env.Lock()
+            defer env.UnlockRender()
+            c.SomeMoreData = string(body) 
+    
+        }()
+
+    }()
+}
+
+</script>
